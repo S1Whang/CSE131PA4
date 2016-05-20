@@ -30,6 +30,7 @@ void Program::Emit() {
     // You can use this as a template and create Emit() function
     // for individual node to fill in the module structure and instructions.
     //
+    /*
     IRGenerator irgen;
     llvm::Module *mod = irgen.GetOrCreateModule("Name_the_Module.bc");
 
@@ -40,8 +41,8 @@ void Program::Emit() {
     llvm::ArrayRef<llvm::Type *> argArray(argTypes);
     llvm::FunctionType *funcTy = llvm::FunctionType::get(intTy, argArray, false);
 
-    // llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("foo", intTy, intTy, (Type *)0));
-    llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("Name_the_function", funcTy));
+    llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("foo", intTy, intTy, (Type *)0));
+    //llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("Name_the_function", funcTy));
     llvm::Argument *arg = f->arg_begin();
     arg->setName("x");
 
@@ -55,6 +56,12 @@ void Program::Emit() {
     llvm::ReturnInst::Create(*context, sum, bb);
 
     // write the BC into standard output
+    llvm::WriteBitcodeToFile(mod, llvm::outs());
+    */
+    llvm::Module *mod = irgen->GetOrCreateModule("foo.bc");
+    for (int i =0; i < decls->NumElements(); i++) {
+      decls->Nth(i)->Emit();
+    }
     llvm::WriteBitcodeToFile(mod, llvm::outs());
 }
 
