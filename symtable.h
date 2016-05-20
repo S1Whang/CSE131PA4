@@ -23,7 +23,7 @@ public:
   void Insert(string,llvm::Value*);
   void Push();
   void Pop();
-  int GetCurrent() {return current;}
+  int GetCurrentIndex() {return current;}
   vector<map<string,llvm::Value*> >& GetVector() {return list;}
   map<string,llvm::Value*>& GetMap() {return list.at(current);}
   map<string,llvm::Value*>& GetGlobalMap() {return list.at(0);}

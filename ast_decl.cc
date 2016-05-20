@@ -40,6 +40,57 @@ void VarDecl::PrintChildren(int indentLevel) {
    if (assignTo) assignTo->Print(indentLevel+1, "(initializer) ");
 }
 
+void VarDecl::Emit() {
+  //std::cout << "VarDecl" << std::endl;
+  llvm::Type *type = llvm::Type::getVoidTy(*(irgen->GetContext()));
+  
+  if (this->type == Type::intType) 
+  {
+    type = irgen->GetIntType();
+    //std::cout << "int type" << std::endl;
+  }
+  else if(this->type == Type::floatType)
+  {
+      type = irgen->GetFloatType();
+      //std::cout << "float type" << std::endl;
+  }
+  //else
+    //std::cout << "not a type yet" << std::endl;
+  // float
+  // bool
+  // vec2
+  // vec3
+  // vec4
+
+  llvm::Twine *name = new llvm::Twine(this->id->GetName());
+  
+  // its a global variable 
+  if (symtable->GetCurrentIndex() == 0) 
+  {
+    /* global variable
+     * Module
+     * Type
+     * Constant?
+     * Twine(name)
+     * GlobalVariable
+     * ThreadLocal?
+     * AddressSpace
+     * Externally Initialized?
+     */
+    
+    llvm::GlobalVariable *global = new llvm::GlobalVariable(
+      *(irgen->GetOrCreateModule("")), type, false, 
+      llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(type),
+      *name, NULL);
+    //string idname = this->id->GetName();
+    //llvm::Value *val = dynamic_cast<llvm::Value*>(global);
+    //if (val) {
+     //std::cout << "true" << std::endl;
+     symtable->Insert(this->id->GetName(), global);
+    //}
+  }
+}
+
 FnDecl::FnDecl(Identifier *n, Type *r, List<VarDecl*> *d) : Decl(n) {
     Assert(n != NULL && r!= NULL && d != NULL);
     (returnType=r)->SetParent(this);
