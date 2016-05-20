@@ -40,12 +40,14 @@
 #include <stdlib.h>   // for NULL
 #include "location.h"
 #include <iostream>
+#include "irgen.h"
 
 using namespace std;
 
 class SymbolTable;
 class MyStack;
 class FnDecl;
+class Symtable;
 
 class Node  {
   protected:
@@ -53,6 +55,9 @@ class Node  {
     Node *parent;
 
   public:
+    static Symtable* symtable;
+    static IRGenerator* irgen;
+
     Node(yyltype loc);
     Node();
     virtual ~Node() {}
