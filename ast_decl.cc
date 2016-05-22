@@ -40,7 +40,7 @@ void VarDecl::PrintChildren(int indentLevel) {
    if (assignTo) assignTo->Print(indentLevel+1, "(initializer) ");
 }
 
-void VarDecl::Emit() {
+llvm::Value* VarDecl::Emit() {
   //std::cout << "VarDecl" << std::endl;
   llvm::Type *type = llvm::Type::getVoidTy(*(irgen->GetContext()));
   
@@ -77,7 +77,38 @@ void VarDecl::Emit() {
      * AddressSpace
      * Externally Initialized?
      */
-    
+    if (assignTo) {
+      
+      llvm::Value *ret = assignTo->Emit();
+      llvm::Constant* c = llvm::Constant::getNullValue(type);
+      if (dynamic_cast<llvm::Constant*>(ret)) {
+        c = dynamic_cast<llvm::Constant*>(ret);
+      }
+      llvm::GlobalVariable *global = new llvm::GlobalVariable(
+      *(irgen->GetOrCreateModule(this->id->GetName())), type, false, 
+      llvm::GlobalValue::ExternalLinkage, c,
+      *name, NULL);
+      symtable->Insert(this->id->GetName(), global); 
+   
+    }
+    else {
+      llvm::GlobalVariable *global = new llvm::GlobalVariable(
+      *(irgen->GetOrCreateModule(this->id->GetName())), type, false,
+      llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(type),
+      *name, NULL);
+      symtable->Insert(this->id->GetName(), global);
+    } 
+  }
+  else
+  { 
+    const llvm::Twine *name = new llvm::Twine(this->id->GetName());
+    llvm::AllocaInst *allo = new llvm::AllocaInst(type,*name,
+      irgen->GetBasicBlock());
+    symtable->Insert(this->id->GetName(),allo);
+  }
+  return NULL;
+  
+    /*
     llvm::GlobalVariable *global = new llvm::GlobalVariable(
       *(irgen->GetOrCreateModule("")), type, false, 
       llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(type),
@@ -88,7 +119,7 @@ void VarDecl::Emit() {
      //std::cout << "true" << std::endl;
      symtable->Insert(this->id->GetName(), global);
     //}
-  }
+ daf sdfsadfasfasdfasf} */
 }
 
 FnDecl::FnDecl(Identifier *n, Type *r, List<VarDecl*> *d) : Decl(n) {
@@ -118,3 +149,49 @@ void FnDecl::PrintChildren(int indentLevel) {
     if (body) body->Print(indentLevel+1, "(body) ");
 }
 
+llvm::Value* FnDecl::Emit() {
+  llvm::Type *type = irgen->GetType(this->returnType);
+  std::vector<llvm::Type *> argTypes;
+  for (int i = 0; i < formals->NumElements(); i++) {
+    Type *ty = formals->Nth(i)->GetType();
+    llvm::Type *varTy = irgen->GetType(ty);
+    argTypes.push_back(varTy);
+  }
+  llvm::ArrayRef<llvm::Type*> argArray(argTypes);
+  llvm::FunctionType *funTy = llvm::FunctionType::get(type,argTypes,false);
+  llvm::Function *f = llvm::cast<llvm::Function>(
+    irgen->GetOrCreateModule("")->getOrInsertFunction(
+    llvm::StringRef(this->id->GetName()),funTy));
+  irgen->SetFunction(f);
+  llvm::Function::arg_iterator args = f->arg_begin();
+  for (int i = 0; i < formals->NumElements(); i++) {
+   args->setName(formals->Nth(i)->GetIdentifier()->GetName());
+   ++args;
+  }
+  llvm::LLVMContext *context = irgen->GetContext();
+  llvm::BasicBlock *bb = llvm::BasicBlock::Create(*context,"entry",f);
+  irgen->SetBasicBlock(bb);
+  symtable->Push();
+
+  llvm::Function::arg_iterator locArgs = f->arg_begin();
+  for (int i = 0; i < formals->NumElements(); i++) {
+    llvm::Type *locTy = irgen->GetType(formals->Nth(i)->GetType());
+    llvm::Twine *lName = new llvm::Twine(formals->Nth(i)->GetIdentifier()->GetName());
+    llvm::AllocaInst *allo = new llvm::AllocaInst(locTy,*lName,irgen->GetBasicBlock());
+    symtable->Insert(formals->Nth(i)->GetIdentifier()->GetName(), allo);
+    new llvm::StoreInst(locArgs, allo, irgen->GetBasicBlock());
+    ++args;
+  }
+  if (body) {
+    llvm::BasicBlock *bodyblock = llvm::BasicBlock::Create(*context,"body",f);
+    llvm::BranchInst::Create(bodyblock,bb);
+    irgen->SetBasicBlock(bodyblock);
+    body->Emit();
+  }
+  symtable->Pop();
+  if (irgen->GetBasicBlock()->getTerminator() == NULL)
+  {
+     new llvm::UnreachableInst(*(irgen->GetContext()),irgen->GetBasicBlock());
+  }
+  return NULL;
+}

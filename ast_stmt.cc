@@ -23,7 +23,7 @@ void Program::PrintChildren(int indentLevel) {
     printf("\n");
 }
 
-void Program::Emit() {
+llvm::Value* Program::Emit() {
     // TODO:
     // This is just a reference for you to get started
     //

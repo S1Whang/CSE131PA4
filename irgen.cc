@@ -4,6 +4,7 @@
  */
 
 #include "irgen.h"
+#include "ast_type.h"
 
 IRGenerator::IRGenerator() :
     context(NULL),
@@ -55,6 +56,46 @@ llvm::Type *IRGenerator::GetBoolType() const {
 
 llvm::Type *IRGenerator::GetFloatType() const {
    llvm::Type *ty = llvm::Type::getFloatTy(*context);
+   return ty;
+}
+llvm::Type *IRGenerator::GetVec2Type() const {
+   llvm::Type *ty = llvm::VectorType::get(llvm::Type::getFloatTy(*context),2);
+   return ty;
+}
+llvm::Type *IRGenerator::GetVec3Type() const {
+   llvm::Type *ty = llvm::VectorType::get(llvm::Type::getFloatTy(*context),3);
+   return ty;
+}
+llvm::Type *IRGenerator::GetVec4Type() const {
+   llvm::Type *ty = llvm::VectorType::get(llvm::Type::getFloatTy(*context),4);
+   return ty;
+}
+llvm::Type *IRGenerator::GetMat2Type() const {
+   llvm::Type *eTy = llvm::VectorType::get(llvm::Type::getFloatTy(*context),2);
+   llvm::Type *ty = llvm::ArrayType::get(eTy,2);
+   return ty;
+}
+llvm::Type *IRGenerator::GetMat3Type() const {
+   llvm::Type *eTy = llvm::VectorType::get(llvm::Type::getFloatTy(*context),3);
+   llvm::Type *ty = llvm::ArrayType::get(eTy,3);
+   return ty;
+}
+llvm::Type *IRGenerator::GetMat4Type() const {
+   llvm::Type *eTy = llvm::VectorType::get(llvm::Type::getFloatTy(*context),4);
+   llvm::Type *ty = llvm::ArrayType::get(eTy,4);
+   return ty;
+}
+llvm::Type *IRGenerator::GetType(Type* type) const {
+   llvm::Type *ty = llvm::Type::getVoidTy(*(context));
+   if (type == Type::floatType) { ty = GetIntType(); }
+   else if (type == Type::intType) { ty = GetIntType(); }
+   else if (type == Type::boolType) { ty = GetBoolType(); }
+   else if (type == Type::mat2Type) { ty = GetMat2Type(); }
+   else if (type == Type::mat3Type) { ty = GetMat3Type(); }
+   else if (type == Type::mat4Type) { ty = GetMat4Type(); }
+   else if (type == Type::vec2Type) { ty = GetVec2Type(); }
+   else if (type == Type::vec3Type) { ty = GetVec3Type(); }
+   else if (type == Type::vec4Type) { ty = GetVec4Type(); }
    return ty;
 }
 
