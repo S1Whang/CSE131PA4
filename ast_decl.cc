@@ -42,25 +42,7 @@ void VarDecl::PrintChildren(int indentLevel) {
 
 llvm::Value* VarDecl::Emit() {
   //std::cout << "VarDecl" << std::endl;
-  llvm::Type *type = llvm::Type::getVoidTy(*(irgen->GetContext()));
-  
-  if (this->type == Type::intType) 
-  {
-    type = irgen->GetIntType();
-    //std::cout << "int type" << std::endl;
-  }
-  else if(this->type == Type::floatType)
-  {
-      type = irgen->GetFloatType();
-      //std::cout << "float type" << std::endl;
-  }
-  //else
-    //std::cout << "not a type yet" << std::endl;
-  // float
-  // bool
-  // vec2
-  // vec3
-  // vec4
+  llvm::Type *type = irgen->GetType(this->type);
 
   llvm::Twine *name = new llvm::Twine(this->id->GetName());
   
