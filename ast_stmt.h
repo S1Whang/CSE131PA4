@@ -96,7 +96,7 @@ class ForStmt : public LoopStmt
     ForStmt(Expr *init, Expr *test, Expr *step, Stmt *body);
     const char *GetPrintNameForNode() { return "ForStmt"; }
     void PrintChildren(int indentLevel);
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class WhileStmt : public LoopStmt 

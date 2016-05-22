@@ -107,6 +107,33 @@ void ForStmt::PrintChildren(int indentLevel) {
     body->Print(indentLevel+1, "(body) ");
 }
 
+llvm::Value* ForStmt::Emit(){
+    llvm::LLVMContext *c = irgen->GetContext();
+    llvm::BasicBlock *hb = llvm::BasicBlock::Create(*c);
+    llvm::BasicBlock *sb = llvm::BasicBlock::Create(*c);
+    llvm::BasicBlock *bb = llvm::BasicBlock::Create(*c);
+    llvm::BasicBlock *fb = llvm::BasicBlock::Create(*c);
+
+    init->Emit();
+    llvm::BranchInst::Create(hb, irgen->GetBasicBlock());
+    irgen->SetBasicBlock(hb);
+    llvm::Value* testVal = test->Emit();
+    llvm::BranchInst::Create(bb, fb, testVal, hb);
+    irgen->SetBasicBlock(bb);
+    body->Emit();
+    llvm::BranchInst::Create(sb,bb);
+    irgen->SetBasicBlock(sb);
+    step->Emit();
+    llvm::BranchInst::Create(hb, sb);
+    return NULL;
+
+    }
+
+
+
+
+
+
 void WhileStmt::PrintChildren(int indentLevel) {
     test->Print(indentLevel+1, "(test) ");
     body->Print(indentLevel+1, "(body) ");
