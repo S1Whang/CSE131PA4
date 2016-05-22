@@ -105,7 +105,7 @@ class WhileStmt : public LoopStmt
     WhileStmt(Expr *test, Stmt *body) : LoopStmt(test, body) {}
     const char *GetPrintNameForNode() { return "WhileStmt"; }
     void PrintChildren(int indentLevel);
-    virtual llvm:: Value* Emit() { return NULL; }
+    virtual llvm:: Value* Emit();
 };
 
 class IfStmt : public ConditionalStmt 
@@ -118,7 +118,7 @@ class IfStmt : public ConditionalStmt
     IfStmt(Expr *test, Stmt *thenBody, Stmt *elseBody);
     const char *GetPrintNameForNode() { return "IfStmt"; }
     void PrintChildren(int indentLevel);
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class IfStmtExprError : public IfStmt
