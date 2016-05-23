@@ -30,7 +30,7 @@ llvm::Value* Program::Emit() {
     // You can use this as a template and create Emit() function
     // for individual node to fill in the module structure and instructions.
     //
-    /*
+    /* 
     IRGenerator irgen;
     llvm::Module *mod = irgen.GetOrCreateModule("Name_the_Module.bc");
 
@@ -41,8 +41,8 @@ llvm::Value* Program::Emit() {
     llvm::ArrayRef<llvm::Type *> argArray(argTypes);
     llvm::FunctionType *funcTy = llvm::FunctionType::get(intTy, argArray, false);
 
-    llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("foo", intTy, intTy, (Type *)0));
-    //llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("Name_the_function", funcTy));
+    //llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("foo", intTy, intTy, (Type *)0));
+    llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("Name_the_function", funcTy));
     llvm::Argument *arg = f->arg_begin();
     arg->setName("x");
 
@@ -63,6 +63,8 @@ llvm::Value* Program::Emit() {
       decls->Nth(i)->Emit();
     }
     llvm::WriteBitcodeToFile(mod, llvm::outs());
+    //*/
+    return NULL;
 }
 
 StmtBlock::StmtBlock(List<VarDecl*> *d, List<Stmt*> *s) {
@@ -75,6 +77,13 @@ void StmtBlock::PrintChildren(int indentLevel) {
     decls->PrintAll(indentLevel+1);
     stmts->PrintAll(indentLevel+1);
 }
+
+llvm::Value *StmtBlock::Emit() {
+    for (int i = 0; i < stmts->NumElements(); i++) {
+      stmts->Nth(i)->Emit();
+    }
+    return NULL;
+} 
 
 DeclStmt::DeclStmt(Decl *d) {
     Assert(d != NULL);
@@ -146,7 +155,7 @@ void WhileStmt::PrintChildren(int indentLevel) {
 llvm::Value* WhileStmt::Emit(){
 
     llvm::LLVMContext *c = irgen->GetContext();
-    llvm::BasicBlock *header = llvm::BasicBlock::Create(*(irgen->GetContext()));
+    llvm::BasicBlock *header = llvm::BasicBlock::Create(*c);
     llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*c);
     llvm::BasicBlock *footer = llvm::BasicBlock::Create(*c);
     llvm::BasicBlock *currentBlock = irgen->GetBasicBlock();
@@ -154,12 +163,12 @@ llvm::Value* WhileStmt::Emit(){
     llvm::BranchInst::Create(header, currentBlock);
     irgen->SetBasicBlock(header);
     llvm::Value* value = test->Emit();
-    llvm::BranchInst::Create(bodyBlock, footer,value, header);
+    llvm::BranchInst::Create(bodyBlock, footer, value, header);
     irgen->SetBasicBlock(bodyBlock);
     body->Emit();
     llvm::BranchInst::Create(header, bodyBlock);
     return NULL;
-    }
+}
 
 
 IfStmt::IfStmt(Expr *t, Stmt *tb, Stmt *eb): ConditionalStmt(t, tb) { 
@@ -180,25 +189,26 @@ llvm::Value* IfStmt::Emit(){
   llvm::LLVMContext *c = irgen->GetContext();
   llvm::Value* value = test->Emit();
   llvm::BasicBlock* foot = llvm::BasicBlock::Create(*c, "footer", function);
-  llvm::BasicBlock* elseBlock;
+  llvm::BasicBlock* elseBlock = NULL;
   if(elseBody != NULL)
     elseBlock = llvm::BasicBlock::Create(*c, "else", function);
-    llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(*c, "then", function);
-    llvm::BranchInst::Create(thenBlock, elseBody ? elseBlock: foot,value, irgen->GetBasicBlock());
-    thenBlock->moveAfter(irgen->GetBasicBlock());
-    irgen->SetBasicBlock(thenBlock);
-    body->Emit();
-    elseBlock->moveAfter(thenBlock);
-    llvm::BranchInst::Create(foot, thenBlock);
-    irgen->SetBasicBlock(elseBlock);
-    elseBody->Emit();
-    foot->moveAfter(elseBlock);
-    llvm::BranchInst::Create(foot, elseBlock);
-    irgen->SetBasicBlock(foot);
-    return NULL;
+  llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(*c, "then", function);
+  llvm::BranchInst::Create(thenBlock, elseBody ? elseBlock: foot,value, irgen->GetBasicBlock());
+  //symtable->Push();
+  thenBlock->moveAfter(irgen->GetBasicBlock());
+  irgen->SetBasicBlock(thenBlock);
+  body->Emit();
+  //symtable->Pop();
+  elseBlock->moveAfter(thenBlock);
+  llvm::BranchInst::Create(foot, thenBlock);
+  irgen->SetBasicBlock(elseBlock);
+  elseBody->Emit();
+  foot->moveAfter(elseBlock);
+  llvm::BranchInst::Create(foot, elseBlock);
+  irgen->SetBasicBlock(foot);
+  return NULL;
 
-    }
-
+}
 
 
 
@@ -213,6 +223,17 @@ void ReturnStmt::PrintChildren(int indentLevel) {
       expr->Print(indentLevel+1);
 }
 
+llvm::Value *ReturnStmt::Emit() {
+  llvm::LLVMContext *c = irgen->GetContext();
+  llvm::BasicBlock *bb = irgen->GetBasicBlock();
+  if (expr != NULL) {
+    llvm::Value *retExpr = expr->Emit();  
+    llvm::ReturnInst::Create(*c, retExpr, bb);
+  }
+  else
+    llvm::ReturnInst::Create(*c, bb); 
+  return NULL;
+}
 SwitchLabel::SwitchLabel(Expr *l, Stmt *s) {
     Assert(l != NULL && s != NULL);
     (label=l)->SetParent(this);

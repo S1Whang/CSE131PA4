@@ -87,7 +87,7 @@ llvm::Type *IRGenerator::GetMat4Type() const {
 }
 llvm::Type *IRGenerator::GetType(Type* type) const {
    llvm::Type *ty = llvm::Type::getVoidTy(*(context));
-   if (type == Type::floatType) { ty = GetIntType(); }
+   if (type == Type::floatType) { ty = GetFloatType(); }
    else if (type == Type::intType) { ty = GetIntType(); }
    else if (type == Type::boolType) { ty = GetBoolType(); }
    else if (type == Type::mat2Type) { ty = GetMat2Type(); }

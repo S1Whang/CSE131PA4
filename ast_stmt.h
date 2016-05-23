@@ -52,7 +52,7 @@ class StmtBlock : public Stmt
     StmtBlock(List<VarDecl*> *variableDeclarations, List<Stmt*> *statements);
     const char *GetPrintNameForNode() { return "StmtBlock"; }
     void PrintChildren(int indentLevel);
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class DeclStmt: public Stmt 
@@ -153,7 +153,7 @@ class ReturnStmt : public Stmt
     ReturnStmt(yyltype loc, Expr *expr = NULL);
     const char *GetPrintNameForNode() { return "ReturnStmt"; }
     void PrintChildren(int indentLevel);
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class SwitchLabel : public Stmt

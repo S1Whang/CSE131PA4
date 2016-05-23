@@ -21,7 +21,14 @@ Symtable::Lookup(string name) {
     return true;
   return false;
 }
-
+llvm::Value*
+Symtable::Lookup(int i, string name) {
+  map<string,llvm::Value*>::iterator it;
+  it = list.at(i).find(name);
+  if (it != list.at(current).end())
+    return list.at(i).find(name)->second;
+  return NULL;
+}
 void
 Symtable::Insert(string name, llvm::Value* val) {
   list.at(current).insert(pair<string,llvm::Value*>(name,val));

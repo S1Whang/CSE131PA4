@@ -20,6 +20,7 @@ public:
   Symtable();
   ~Symtable();
   bool Lookup(string);
+  llvm::Value* Lookup(int, string);
   void Insert(string,llvm::Value*);
   void Push();
   void Pop();

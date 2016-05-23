@@ -29,6 +29,7 @@ class Expr : public Stmt
     friend std::ostream& operator<< (std::ostream& stream, Expr * expr) {
         return stream << expr->GetPrintNameForNode();
     }
+    virtual llvm::Value* Emit() { return NULL; }
 };
 
 class ExprError : public Expr
@@ -56,6 +57,7 @@ class IntConstant : public Expr
     IntConstant(yyltype loc, int val);
     const char *GetPrintNameForNode() { return "IntConstant"; }
     void PrintChildren(int indentLevel);
+    virtual llvm::Value* Emit();
 };
 
 class FloatConstant: public Expr 
@@ -67,6 +69,7 @@ class FloatConstant: public Expr
     FloatConstant(yyltype loc, double val);
     const char *GetPrintNameForNode() { return "FloatConstant"; }
     void PrintChildren(int indentLevel);
+    virtual llvm::Value* Emit();
 };
 
 class BoolConstant : public Expr 
@@ -78,6 +81,7 @@ class BoolConstant : public Expr
     BoolConstant(yyltype loc, bool val);
     const char *GetPrintNameForNode() { return "BoolConstant"; }
     void PrintChildren(int indentLevel);
+    virtual llvm::Value* Emit();
 };
 
 class VarExpr : public Expr
@@ -90,6 +94,8 @@ class VarExpr : public Expr
     const char *GetPrintNameForNode() { return "VarExpr"; }
     void PrintChildren(int indentLevel);
     Identifier *GetIdentifier() {return id;}
+    llvm::Value* Emit();
+    llvm::Value* Store();
 };
 
 class Operator : public Node 
@@ -103,6 +109,7 @@ class Operator : public Node
     void PrintChildren(int indentLevel);
     friend ostream& operator<<(ostream& out, Operator *o) { return out << o->tokenString; }
     bool IsOp(const char *op) const;
+    char *getName() { return tokenString; }
  };
  
 class CompoundExpr : public Expr
@@ -116,6 +123,7 @@ class CompoundExpr : public Expr
     CompoundExpr(Operator *op, Expr *rhs);             // for unary
     CompoundExpr(Expr *lhs, Operator *op);             // for unary
     void PrintChildren(int indentLevel);
+    virtual llvm::Value* Emit() { return NULL; } 
 };
 
 class ArithmeticExpr : public CompoundExpr 
@@ -124,6 +132,7 @@ class ArithmeticExpr : public CompoundExpr
     ArithmeticExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     ArithmeticExpr(Operator *op, Expr *rhs) : CompoundExpr(op,rhs) {}
     const char *GetPrintNameForNode() { return "ArithmeticExpr"; }
+    virtual llvm::Value* Emit();
 };
 
 class RelationalExpr : public CompoundExpr 
@@ -131,6 +140,7 @@ class RelationalExpr : public CompoundExpr
   public:
     RelationalExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "RelationalExpr"; }
+    virtual llvm::Value *Emit();
 };
 
 class EqualityExpr : public CompoundExpr 
@@ -153,6 +163,7 @@ class AssignExpr : public CompoundExpr
   public:
     AssignExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "AssignExpr"; }
+    virtual llvm::Value* Emit(); 
 };
 
 class PostfixExpr : public CompoundExpr
@@ -160,7 +171,7 @@ class PostfixExpr : public CompoundExpr
   public:
     PostfixExpr(Expr *lhs, Operator *op) : CompoundExpr(lhs,op) {}
     const char *GetPrintNameForNode() { return "PostfixExpr"; }
-
+    virtual llvm::Value* Emit();
 };
 
 class ConditionalExpr : public Expr

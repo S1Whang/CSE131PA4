@@ -15,21 +15,27 @@ IntConstant::IntConstant(yyltype loc, int val) : Expr(loc) {
 void IntConstant::PrintChildren(int indentLevel) { 
     printf("%d", value);
 }
-
+llvm::Value* IntConstant::Emit() {
+    return llvm::ConstantInt::get(irgen->GetIntType(), value);
+}
 FloatConstant::FloatConstant(yyltype loc, double val) : Expr(loc) {
     value = val;
 }
 void FloatConstant::PrintChildren(int indentLevel) { 
     printf("%g", value);
 }
-
+llvm::Value* FloatConstant::Emit() {
+    return llvm::ConstantFP::get(irgen->GetFloatType(), value);
+}
 BoolConstant::BoolConstant(yyltype loc, bool val) : Expr(loc) {
     value = val;
 }
 void BoolConstant::PrintChildren(int indentLevel) { 
     printf("%s", value ? "true" : "false");
 }
-
+llvm::Value* BoolConstant::Emit() {
+    return llvm::ConstantInt::get(irgen->GetBoolType(), value);
+}
 VarExpr::VarExpr(yyltype loc, Identifier *ident) : Expr(loc) {
     Assert(ident != NULL);
     this->id = ident;
@@ -39,6 +45,26 @@ void VarExpr::PrintChildren(int indentLevel) {
     id->Print(indentLevel+1);
 }
 
+llvm::Value* VarExpr::Emit() {
+  llvm::Value *var = NULL;
+  for (int i = symtable->GetCurrentIndex(); i >= 0; i--) {
+    var = symtable->Lookup(i, id->GetName());
+    if (var != NULL) {
+      llvm::Twine* name = new llvm::Twine(id->GetName());
+      llvm::Value* out = new llvm::LoadInst(var,*name,irgen->GetBasicBlock());
+      return out;
+    }
+  }
+  return NULL;
+}
+llvm::Value* VarExpr::Store() {
+  llvm::Value *var = NULL;
+  for (int i = symtable->GetCurrentIndex(); i >= 0; i--) {
+    var = symtable->Lookup(i, id->GetName());
+    if (var != NULL) return var;
+  }
+  return var;
+}
 Operator::Operator(yyltype loc, const char *tok) : Node(loc) {
     Assert(tok != NULL);
     strncpy(tokenString, tok, sizeof(tokenString));
@@ -80,7 +106,132 @@ void CompoundExpr::PrintChildren(int indentLevel) {
    op->Print(indentLevel+1);
    if (right) right->Print(indentLevel+1);
 }
-   
+llvm::Value *RelationalExpr::Emit() {
+   llvm::Value* l = left->Emit();
+   llvm::Value* r = right->Emit();
+   llvm::Type* type = l->getType();
+   llvm::CmpInst::OtherOps ops;
+   if (type == (llvm::Type*)irgen->GetIntType()) 
+     ops = llvm::CmpInst::ICmp;
+   else
+     ops = llvm::CmpInst::FCmp;
+   if ((string(op->getName())) == "<") {
+     llvm::CmpInst::Predicate pred;
+     if (type == (llvm::Type*)irgen->GetIntType())
+       pred = llvm::ICmpInst::ICMP_SLT;
+     else
+       pred = llvm::ICmpInst::FCMP_OLT;
+     return llvm::CmpInst::Create(ops,pred,l,r,"",irgen->GetBasicBlock()); 
+   }
+   return NULL;
+}
+llvm::Value* AssignExpr::Emit() {
+   llvm::Value *l;
+   llvm::Value *r = right->Emit();
+   llvm::Value *o = NULL;
+   if ((string(op->getName())) == "=") {
+   }
+   if ((string(op->getName())) == "+=") {
+   }
+   if ((string(op->getName())) == "-=") {
+   }
+   if ((string(op->getName())) == "*=") {
+   }
+   return NULL; 
+}
+llvm::Value* ArithmeticExpr::Emit() {
+   llvm::Value *r = right->Emit();
+   llvm::Type *t = r->getType();
+   llvm::Value *l = NULL;
+   if (left != NULL) {
+     l = left->Emit();
+   }
+   llvm::Value *out = NULL;
+   if ((string(op->getName())) == "+") {
+     if (t == (llvm::Type*)irgen->GetIntType())
+       out = llvm::BinaryOperator::CreateAdd(l,r,"",irgen->GetBasicBlock());
+     else
+       out = llvm::BinaryOperator::CreateFAdd(l,r,"",irgen->GetBasicBlock());
+   }
+   if ((string(op->getName())) == "-") {
+     if (t == (llvm::Type*)irgen->GetIntType())
+       out = llvm::BinaryOperator::CreateSub(l,r,"",irgen->GetBasicBlock());
+     else
+       out = llvm::BinaryOperator::CreateFSub(l,r,"",irgen->GetBasicBlock());
+   }
+   if ((string(op->getName())) == "*") {
+     if (t == (llvm::Type*)irgen->GetIntType())
+       out = llvm::BinaryOperator::CreateMul(l,r,"",irgen->GetBasicBlock());
+     else
+       out = llvm::BinaryOperator::CreateFMul(l,r,"",irgen->GetBasicBlock());
+   }
+   if ((string(op->getName())) == "/") {
+     if (t == (llvm::Type*)irgen->GetIntType())
+       out = llvm::BinaryOperator::CreateSDiv(l,r,"",irgen->GetBasicBlock());
+     else
+       out = llvm::BinaryOperator::CreateFDiv(l,r,"",irgen->GetBasicBlock());
+   }
+   if ((string(op->getName())) == "++") {
+     if (t == (llvm::Type*)irgen->GetIntType()) {
+       llvm::Value *add = llvm::ConstantInt::get(irgen->GetIntType(),1);
+       out = llvm::BinaryOperator::CreateAdd(r,add,"",irgen->GetBasicBlock());
+     }
+     else { 
+       llvm::Value *add = llvm::ConstantFP::get(irgen->GetFloatType(),1.0);
+       out = llvm::BinaryOperator::CreateFAdd(r,add,"",irgen->GetBasicBlock());
+     }
+     VarExpr* expr = dynamic_cast<VarExpr*>(right);
+     new llvm::StoreInst(out, expr->Store(), irgen->GetBasicBlock());
+     return out;
+   }
+   if ((string(op->getName())) == "--") {
+     if (t == (llvm::Type*)irgen->GetIntType()) {
+       llvm::Value *sub = llvm::ConstantInt::get(irgen->GetIntType(),1);
+       out = llvm::BinaryOperator::CreateSub(r,sub,"",irgen->GetBasicBlock());
+     }
+     else {
+       llvm::Value *sub = llvm::ConstantFP::get(irgen->GetFloatType(),1.0);
+       out = llvm::BinaryOperator::CreateSub(r,sub,"",irgen->GetBasicBlock());
+     }
+     VarExpr* expr = dynamic_cast<VarExpr*>(right);
+     new llvm::StoreInst(out, expr->Store(), irgen->GetBasicBlock());
+     return out;
+   }
+   return out;
+}
+llvm::Value* PostfixExpr::Emit() {
+   llvm::Value *l = left->Emit();
+   llvm::Type *type = l->getType();
+   llvm::Value *out = NULL;
+  //new llvm::LoadInst(NULL,"",irgen->GetBasicBlock());
+   if ((string(op->getName())) == "++") { 
+     if (type == (llvm::Type*)irgen->GetIntType()) {
+       llvm::Value *add = llvm::ConstantInt::get(irgen->GetIntType(),1);
+       out = llvm::BinaryOperator::CreateAdd(l,add,"",irgen->GetBasicBlock());
+     }
+     else {
+       llvm::Value *add = llvm::ConstantFP::get(irgen->GetFloatType(),1.0);
+       out = llvm::BinaryOperator::CreateFAdd(l,add,"",irgen->GetBasicBlock());
+     }
+     VarExpr* expr = dynamic_cast<VarExpr*>(left);
+     new llvm::StoreInst(out, expr->Store(), irgen->GetBasicBlock());
+     return out;
+   }
+   if ((string(op->getName())) == "--") {
+     if (type == (llvm::Type*)irgen->GetIntType()) {
+       llvm::Value *sub = llvm::ConstantInt::get(irgen->GetIntType(),1);
+       out = llvm::BinaryOperator::CreateSub(l,sub,"",irgen->GetBasicBlock());
+     }
+     else {
+       llvm::Value *sub = llvm::ConstantFP::get(irgen->GetFloatType(),1.0);
+       out = llvm::BinaryOperator::CreateSub(l,sub,"",irgen->GetBasicBlock());
+     }
+     VarExpr* expr = dynamic_cast<VarExpr*>(left);
+     new llvm::StoreInst(out, NULL, irgen->GetBasicBlock());
+     return out;
+   }
+   return out;	
+}   
 ConditionalExpr::ConditionalExpr(Expr *c, Expr *t, Expr *f)
   : Expr(Join(c->GetLocation(), f->GetLocation())) {
     Assert(c != NULL && t != NULL && f != NULL);

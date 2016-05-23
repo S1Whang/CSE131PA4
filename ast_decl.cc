@@ -43,7 +43,7 @@ void VarDecl::PrintChildren(int indentLevel) {
 llvm::Value* VarDecl::Emit() {
   //std::cout << "VarDecl" << std::endl;
   llvm::Type *type = irgen->GetType(this->type);
-
+  
   llvm::Twine *name = new llvm::Twine(this->id->GetName());
   
   // its a global variable 
@@ -74,34 +74,21 @@ llvm::Value* VarDecl::Emit() {
    
     }
     else {
+      llvm::Constant* c = llvm::Constant::getNullValue(type);
       llvm::GlobalVariable *global = new llvm::GlobalVariable(
       *(irgen->GetOrCreateModule(this->id->GetName())), type, false,
-      llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(type),
-      *name, NULL);
+      llvm::GlobalValue::ExternalLinkage, c, *name, NULL);
       symtable->Insert(this->id->GetName(), global);
     } 
   }
   else
   { 
     const llvm::Twine *name = new llvm::Twine(this->id->GetName());
-    llvm::AllocaInst *allo = new llvm::AllocaInst(type,*name,
-      irgen->GetBasicBlock());
+    llvm::BasicBlock *bb = irgen->GetBasicBlock();
+    llvm::AllocaInst *allo = new llvm::AllocaInst(type,*name, bb);
     symtable->Insert(this->id->GetName(),allo);
   }
   return NULL;
-  
-    /*
-    llvm::GlobalVariable *global = new llvm::GlobalVariable(
-      *(irgen->GetOrCreateModule("")), type, false, 
-      llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(type),
-      *name, NULL);
-    //string idname = this->id->GetName();
-    //llvm::Value *val = dynamic_cast<llvm::Value*>(global);
-    //if (val) {
-     //std::cout << "true" << std::endl;
-     symtable->Insert(this->id->GetName(), global);
-    //}
- daf sdfsadfasfasdfasf} */
 }
 
 FnDecl::FnDecl(Identifier *n, Type *r, List<VarDecl*> *d) : Decl(n) {
