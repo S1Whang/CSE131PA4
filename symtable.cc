@@ -25,8 +25,9 @@ llvm::Value*
 Symtable::Lookup(int i, string name) {
   map<string,llvm::Value*>::iterator it;
   it = list.at(i).find(name);
-  if (it != list.at(current).end())
+  if (it != list.at(current).end()) {
     return list.at(i).find(name)->second;
+  }
   return NULL;
 }
 void

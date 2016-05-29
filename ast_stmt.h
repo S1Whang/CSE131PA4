@@ -64,7 +64,7 @@ class DeclStmt: public Stmt
     DeclStmt(Decl *d);
     const char *GetPrintNameForNode() { return "DeclStmt"; }
     void PrintChildren(int indentLevel);
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
   
 class ConditionalStmt : public Stmt
@@ -183,6 +183,7 @@ class Default : public SwitchLabel
   public:
     Default(Stmt *stmt) : SwitchLabel(stmt) {}
     const char *GetPrintNameForNode() { return "Default"; }
+    virtual llvm::Value* Emit() { return NULL; }
 };
 
 class SwitchStmt : public Stmt
@@ -206,6 +207,7 @@ class SwitchStmtError : public SwitchStmt
   public:
     SwitchStmtError(const char * msg) { yyerror(msg); }
     const char *GetPrintNameForNode() { return "SwitchStmtError"; }
+    virtual llvm::Value* Emit() { return NULL; }
 };
 
 #endif
