@@ -81,6 +81,7 @@ class BoolConstant : public Expr
     BoolConstant(yyltype loc, bool val);
     const char *GetPrintNameForNode() { return "BoolConstant"; }
     void PrintChildren(int indentLevel);
+    bool getValue() { return value; }
     virtual llvm::Value* Emit();
 };
 
@@ -94,7 +95,7 @@ class VarExpr : public Expr
     const char *GetPrintNameForNode() { return "VarExpr"; }
     void PrintChildren(int indentLevel);
     Identifier *GetIdentifier() {return id;}
-    llvm::Value* Emit();
+    virtual llvm::Value* Emit();
     llvm::Value* Store();
 };
 
@@ -148,6 +149,7 @@ class EqualityExpr : public CompoundExpr
   public:
     EqualityExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "EqualityExpr"; }
+    virtual llvm::Value *Emit();
 };
 
 class LogicalExpr : public CompoundExpr 
@@ -156,6 +158,7 @@ class LogicalExpr : public CompoundExpr
     LogicalExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     LogicalExpr(Operator *op, Expr *rhs) : CompoundExpr(op,rhs) {}
     const char *GetPrintNameForNode() { return "LogicalExpr"; }
+    virtual llvm::Value *Emit();
 };
 
 class AssignExpr : public CompoundExpr 

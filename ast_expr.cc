@@ -8,6 +8,8 @@
 #include "ast_type.h"
 #include "ast_decl.h"
 #include "symtable.h"
+const int T = 1;
+const int ZERO = 0;
 
 IntConstant::IntConstant(yyltype loc, int val) : Expr(loc) {
     value = val;
@@ -143,6 +145,42 @@ llvm::Value *RelationalExpr::Emit() {
    }
    return NULL;
 }
+llvm::Value* EqualityExpr::Emit() {
+  llvm::Value *l = left->Emit();
+  llvm::Value *r = right->Emit();
+  llvm::Type *type = l->getType();
+  llvm::CmpInst::OtherOps ops;
+  llvm::CmpInst::Predicate pred;
+  llvm::Type* comp = irgen->GetIntType();
+   
+  if (type == comp) ops = llvm::CmpInst::ICmp;
+  else ops = llvm::CmpInst::FCmp;
+ 
+  // INEQUALITY
+  if ((string(op->getName())) == "!=") {
+    if (type == comp) pred = llvm::ICmpInst::ICMP_NE;
+    else pred = llvm::CmpInst::FCMP_ONE;
+    return llvm::CmpInst::Create(ops, pred, l, r, "", irgen->GetBasicBlock());
+  }
+  // EQUALITY
+  else if ((string(op->getName())) == "==") {
+    if (type == comp) pred = llvm::ICmpInst::ICMP_EQ;
+    else pred = llvm::CmpInst::FCMP_OEQ;
+    return llvm::CmpInst::Create(ops, pred, l, r, "", irgen->GetBasicBlock());
+  }  
+  return NULL;
+}
+llvm::Value* LogicalExpr::Emit() {
+   llvm::Value *l = left->Emit();
+   llvm::Value *r = right->Emit();
+   if ((string(op->getName())) == "&&") {
+     return llvm::BinaryOperator::CreateAnd(l, r, "", irgen->GetBasicBlock());
+   }
+   else if ((string(op->getName())) == "||") {
+     return llvm::BinaryOperator::CreateOr(l, r, "", irgen->GetBasicBlock());
+   }
+   return NULL; 
+}
 llvm::Value* AssignExpr::Emit() {
    llvm::Value *l;
    llvm::Value *r = right->Emit();
@@ -157,7 +195,11 @@ llvm::Value* AssignExpr::Emit() {
      VarExpr* leftV = dynamic_cast<VarExpr*>(left);
      llvm::Value* temp = leftV->Store();
      l = left->Emit();
-     llvm::Value *res = llvm::BinaryOperator::CreateMul(l,r,"",irgen->GetBasicBlock());
+     llvm::Value *res;
+     if (r->getType() == (llvm::Type*)irgen->GetIntType())
+       res  = llvm::BinaryOperator::CreateMul(l,r,"",irgen->GetBasicBlock());
+     else
+       res = llvm::BinaryOperator::CreateFMul(l,r,"",irgen->GetBasicBlock());
      return new llvm::StoreInst(res, temp, irgen->GetBasicBlock());
    }
    // DIVISION ASSIGNMENT
@@ -165,7 +207,11 @@ llvm::Value* AssignExpr::Emit() {
      VarExpr* leftV = dynamic_cast<VarExpr*>(left);
      llvm::Value* temp = leftV->Store();
      l = left->Emit();
-     llvm::Value *res = llvm::BinaryOperator::CreateUDiv(l,r,"",irgen->GetBasicBlock());
+     llvm::Value *res;
+     if (r->getType() == (llvm::Type*)irgen->GetIntType())
+       res = llvm::BinaryOperator::CreateUDiv(l,r,"",irgen->GetBasicBlock());
+     else 
+       res = llvm::BinaryOperator::CreateFDiv(l,r,"",irgen->GetBasicBlock());
      return new llvm::StoreInst(res, temp, irgen->GetBasicBlock());
    }
    // ADDITION ASSIGNMENT
@@ -173,7 +219,11 @@ llvm::Value* AssignExpr::Emit() {
      VarExpr* leftV = dynamic_cast<VarExpr*>(left);
      llvm::Value* temp = leftV->Store();
      l = left->Emit();
-     llvm::Value *res = llvm::BinaryOperator::CreateAdd(l,r,"",irgen->GetBasicBlock());
+     llvm::Value *res;
+     if (r->getType() == (llvm::Type*)irgen->GetIntType())
+       res = llvm::BinaryOperator::CreateAdd(l,r,"",irgen->GetBasicBlock());
+     else 
+       res = llvm::BinaryOperator::CreateFAdd(l,r,"",irgen->GetBasicBlock());
      return new llvm::StoreInst(res, temp, irgen->GetBasicBlock());
    }
    // SUBTRACTION ASSIGNMENT
@@ -181,7 +231,11 @@ llvm::Value* AssignExpr::Emit() {
      VarExpr* leftV = dynamic_cast<VarExpr*>(left);
      llvm::Value* temp = leftV->Store();
      l = left->Emit();
-     llvm::Value *res = llvm::BinaryOperator::CreateSub(l,r,"",irgen->GetBasicBlock());
+     llvm::Value *res;
+     if (r->getType() == (llvm::Type*)irgen->GetIntType())
+       res = llvm::BinaryOperator::CreateSub(l,r,"",irgen->GetBasicBlock());
+     else 
+       res = llvm::BinaryOperator::CreateFSub(l,r,"",irgen->GetBasicBlock());
      return new llvm::StoreInst(res, temp, irgen->GetBasicBlock());
    }
    return NULL; 
@@ -253,6 +307,7 @@ llvm::Value* ArithmeticExpr::Emit() {
    return out;
 }
 llvm::Value* PostfixExpr::Emit() {
+   /*
    llvm::Value *l = left->Emit();
    llvm::Type *type = l->getType();
    llvm::Value *out = NULL;
@@ -283,8 +338,53 @@ llvm::Value* PostfixExpr::Emit() {
      VarExpr* expr = dynamic_cast<VarExpr*>(left);
      new llvm::StoreInst(out, expr->Store(), irgen->GetBasicBlock());
      return out;
-   }
-   return out;
+   } */
+    llvm::Type* leftType = left->Emit()->getType();
+    Operator *op = this->op;
+
+    llvm::LoadInst *inst = llvm::cast<llvm::LoadInst>(left->Emit());
+    llvm::Value *loc = inst->getPointerOperand();
+
+    llvm::BasicBlock *bb = irgen->GetBasicBlock();
+    llvm::Type *intType = irgen->GetIntType();
+    llvm::Value *val1 = llvm::ConstantInt::get(intType, 1);
+
+    if (leftType->isIntegerTy()) {
+        if (op->IsOp("++") == true) {
+            llvm::Value *increment = llvm::BinaryOperator::CreateAdd(left->Emit(), val1, "intInc", bb);
+            llvm::Value *storeInst = new llvm::StoreInst(increment, loc, bb);
+            (void)storeInst;
+
+            return inst;
+        }
+
+        else if (op->IsOp("--") == true) {
+            llvm::Value *decrement = llvm::BinaryOperator::CreateSub(left->Emit(), val1, "intDec", bb);
+            llvm::Value *storeInst = new llvm::StoreInst(decrement, loc, bb);
+            (void)storeInst;
+
+            return inst;
+        }
+    }
+
+    else if (leftType->isFloatTy()) {
+        if (op->IsOp("++")== true) {
+            llvm::Value *increment = llvm::BinaryOperator::CreateAdd(left->Emit(), val1, "floatInc", bb);
+            llvm::Value *storeInst = new llvm::StoreInst(increment, loc, bb);
+           (void)storeInst;
+
+            return inst;
+        }
+
+        else if (op->IsOp("--")==true) {
+            llvm::Value *decrement = llvm::BinaryOperator::CreateSub(left->Emit(), val1, "floatDec", bb);
+          llvm::Value *storeInst = new llvm::StoreInst(decrement, loc, bb);
+              (void)storeInst;
+
+            return inst;
+        }
+    }
+    return NULL;
 }   
 ConditionalExpr::ConditionalExpr(Expr *c, Expr *t, Expr *f)
   : Expr(Join(c->GetLocation(), f->GetLocation())) {

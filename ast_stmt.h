@@ -84,7 +84,7 @@ class LoopStmt : public ConditionalStmt
   public:
     LoopStmt(Expr *testExpr, Stmt *body)
             : ConditionalStmt(testExpr, body) {}
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class ForStmt : public LoopStmt 
@@ -133,7 +133,7 @@ class BreakStmt : public Stmt
   public:
     BreakStmt(yyltype loc) : Stmt(loc) {}
     const char *GetPrintNameForNode() { return "BreakStmt"; }
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class ContinueStmt : public Stmt 
@@ -141,7 +141,7 @@ class ContinueStmt : public Stmt
   public:
     ContinueStmt(yyltype loc) : Stmt(loc) {}
     const char *GetPrintNameForNode() { return "ContinueStmt"; }
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class ReturnStmt : public Stmt  
@@ -167,7 +167,8 @@ class SwitchLabel : public Stmt
     SwitchLabel(Expr *label, Stmt *stmt);
     SwitchLabel(Stmt *stmt);
     void PrintChildren(int indentLevel);
-
+    virtual llvm::Value *Emit();
+    Expr* returnLabel() { return label; }
 };
 
 class Case : public SwitchLabel
@@ -176,6 +177,7 @@ class Case : public SwitchLabel
     Case() : SwitchLabel() {}
     Case(Expr *label, Stmt *stmt) : SwitchLabel(label, stmt) {}
     const char *GetPrintNameForNode() { return "Case"; }
+    virtual llvm::Value *Emit();
 };
 
 class Default : public SwitchLabel
@@ -183,7 +185,7 @@ class Default : public SwitchLabel
   public:
     Default(Stmt *stmt) : SwitchLabel(stmt) {}
     const char *GetPrintNameForNode() { return "Default"; }
-    virtual llvm::Value* Emit() { return NULL; }
+    virtual llvm::Value* Emit();
 };
 
 class SwitchStmt : public Stmt
@@ -198,8 +200,7 @@ class SwitchStmt : public Stmt
     SwitchStmt(Expr *expr, List<Stmt*> *cases, Default *def);
     virtual const char *GetPrintNameForNode() { return "SwitchStmt"; }
     void PrintChildren(int indentLevel);
-    virtual llvm::Value* Emit() { return NULL; }
-
+    virtual llvm::Value* Emit();
 };
 
 class SwitchStmtError : public SwitchStmt
